@@ -100,29 +100,27 @@ func (t *Transport) BuildInitialGist() *github.Gist {
 }
 
 
-func (t *Transport) CheckAndSetup() error {
+func (t *Transport) CheckAndSetup() (bool, error) {
+    isnew := false
     g, err := t.SearchForGist(t.User, t.GistName)
     if err != nil {
+        isnew = true
+
         u, _, err := t.Client.Users.Get(t.User)
-        if err != nil { return err }
+        if err != nil { return isnew, err }
 
         g = t.BuildInitialGist()
         g.Owner = u
 
         g, _, err = t.Client.Gists.Create(g)
-        if err != nil { return err }
+        if err != nil { return isnew, err }
     }
     t.GistID = *g.ID
-    return nil
+    return isnew, nil
 }
 
 
-type ToDoTaskArray struct {
-    Tasks []model.ToDoTask     `json:"tasks"`
-}
-
-
-func (t *Transport) List() ([]model.ToDoTask, error) {
+func (t *Transport) Read() (*[]model.ToDoTask, error) {
     g, _, err := t.Client.Gists.Get(t.GistID)
     if err != nil { return nil, err }
 
@@ -138,19 +136,24 @@ func (t *Transport) List() ([]model.ToDoTask, error) {
         err := json.Unmarshal(content, &tasks)
         if err != nil { return nil, err }
 
-        return tasks, nil
-    } else {
-        return nil, fmt.Errorf("Could not fetch data from Github: %s", res)
+        return &tasks, nil
+
+    return nil, fmt.Errorf("Could not fetch data from Github: %s", res)
+}
+
+
+func (t *Transport) Write(tasks *[]model.ToDoTask) error {
+    b, err := json.Marshal(tasks)
+    if err != nil { return err }
+
+    g, _, err := t.Client.Gists.Get(t.GistID)
+    if err != nil { return err }
+
+    cntn := string(b)
+    g.Files[github.GistFilename(t.GistName)] = github.GistFile{
+        Filename: &t.GistName,
+        Content: &cntn,
     }
+    _, _, err = t.Client.Gists.Edit(*g.ID, g)
+    return err
 }
-
-
-func (t *Transport) DeleteByID(id uint) error {
-    return fmt.Errorf("Delete not implemented")
-}
-
-
-func (t *Transport) Delete(task model.ToDoTask) error {
-    return t.DeleteByID(task.IssueID)
-}
-

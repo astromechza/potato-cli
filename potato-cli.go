@@ -7,6 +7,7 @@ import (
 
     "github.com/AstromechZA/potato-cli/config"
     "github.com/AstromechZA/potato-cli/transport"
+    "github.com/AstromechZA/potato-cli/model"
 )
 
 const usageString =
@@ -35,7 +36,16 @@ func mainInner() error {
     err = transport.CheckAndSetup()
     if err != nil { return err }
 
-    fmt.Println(transport.List())
+    tasks, err := transport.Read()
+    if err != nil { return err }
+
+    tasksS := append(*tasks, model.ToDoTask{
+
+    })
+    tasks = &tasksS
+
+    err = transport.Write(tasks)
+    fmt.Println(err)
 
     return nil
 }
