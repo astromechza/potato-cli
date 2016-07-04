@@ -2,6 +2,7 @@ package main
 
 import (
     "os"
+    "fmt"
 
     "github.com/AstromechZA/potato-cli/transports/bitbucket"
 )
@@ -14,7 +15,12 @@ func mainInner() error {
         Pass: "6dmgWkBfUsFsHrys",
         RepoSlug: "testing-todos",
     }
-    return t.Init()
+    err := t.Init()
+    if err != nil { return err }
+    tasks, err := t.Read()
+    fmt.Println(tasks)
+    return err
+
 }
 
 

@@ -21,7 +21,6 @@ type BitBucketTransport struct {
 
 
 func (t *BitBucketTransport) Init() error {
-
     // check repository exists
     r, c, err := t.apiGet("repositories/" + t.User + "/" + t.RepoSlug)
     if err != nil { return err }
@@ -39,6 +38,42 @@ func (t *BitBucketTransport) Init() error {
     }
 
     return nil
+}
+
+
+func (t* BitBucketTransport) Read() (*[]model.ToDoTask, error) {
+    // fetch issues listing
+    r, c, err := t.apiGet("repositories/" + t.User + "/" + t.RepoSlug + "/issues")
+    if err != nil { return nil, err }
+    if err = t.convertHttpError(r, c); err != nil { return nil, err }
+
+    fmt.Println(string(*r))
+
+    // parse json response
+    p, err := gabs.ParseJSON(*r)
+    if err != nil { return fmt.Errorf("Couldn't parse JSON: %s", string(*r)) }
+
+    // fetch issue array
+    issueItems, ok := p.Path("issues").Children()
+    if ok == false {
+        return fmt.Errorf("Couldn't fetch array of issues in JSON response")
+    }
+
+    // build output structure
+    tasks := make([]model.ToDoTask, len(issueItems))
+    for i, issue := range issueItems {
+
+        status, _ := p.Path("status").Data().(string)
+        priority, _ := p.Path("priority").Data().(string)
+        title, _ := p.Path("title").Data().(string)
+        content, _  := p.Path("content").Data().(string)
+
+        tasks[i] = model.ToDoTask{
+            Title: title,
+            Description: content,
+        }
+    }
+    return tasks, nil
 }
 
 
